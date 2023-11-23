@@ -1,0 +1,193 @@
+---
+title: "Custom simulator"
+author: "Farell"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r}
+knitr::opts_chunk$set(echo = TRUE)
+library('plot.matrix')
+library(gifski)
+steps <- 240
+columns <- 60
+rows    <- 60
+occupied_tiles <- NULL
+spawn_rate_person_1<-1/200
+death_rate_person_1<-1/200
+city_power <- 3
+
+
+
+temp_cities <- seq(from=10,to=20,by=1)
+cities <- list(c(temp_cities+columns*5,temp_cities+columns*6,temp_cities+columns*7),
+               c(temp_cities+columns*23,temp_cities+columns*24,temp_cities+columns*25))
+
+initial_players <-matrix(c(60*3+10,11,1),ncol=3,byrow=T)
+
+chance_NW_person_group_1 <- chance_NE_person_group_1 <- chance_SE_person_group_1 <- chance_SW_person_group_1 <- 3
+chance_N_person_group_1 <- chance_E_person_group_1 <- chance_S_person_group_1 <- chance_W_person_group_1 <- 2
+chance_center_person_group_1 <- 1
+#######Setup
+
+###Crea la matriz de jugadores
+players <- matrix(ncol=3)
+colnames(players) <- c("Location","Type","Mem_belonging")
+###Añade los jugadores iniciales
+players <- rbind(players,initial_players)
+
+
+###Crea tablero con n (limite de 10?)
+board <- rep(0,columns*rows)
+board[cities[[1]]] <- 1
+board[cities[[2]]] <- 2
+occupied_tiles <- NULL
+
+###Calculos de distancias
+dist_max_effect <- sqrt( columns^2 + rows^2 )
+example_powers <- (1:dist_max_effect)*city_power/dist_max_effect
+print(example_powers)
+
+
+center_city_1 <- c(mean(cities[[1]] %% columns),mean((cities[[1]] %/% columns)+1))
+center_city_2 <- c(mean(cities[[2]] %% columns),mean((cities[[2]] %/% columns)+1))
+city_centers <- rbind(center_city_1,center_city_2)
+colnames(city_centers) <- c("x_cord","y_cord")
+
+#######Dinamico
+store_frames <- matrix(nrow=steps,ncol=columns*rows)
+for (frame_index in 1:steps){
+  ###Veamos el tablero
+  vis_board <- board
+  vis_board[players[-1,1]] <- players[-1,2]
+  store_frames[frame_index,] <- vis_board
+  
+  
+  
+  ###Spawneos y despawneos
+  ##Humanos tipo 1
+  #Despawnea humanos tipo 1
+  person_group_1 <- subset(players,players[,"Type"]==11)
+  person_group_1 <- rbind(c(NA,NA,NA),person_group_1)
+  count_person_1 <- length(person_group_1[-1,1])
+  dies_person_1_seed <- runif(min=0,max=1,n=count_person_1)
+  does_die <- dies_person_1_seed<=death_rate_person_1
+  does_die <- c(FALSE,does_die) #Keeps the NA row always
+  person_group_1 <- person_group_1[!does_die,] #Keep the humans 1 that don't die
+  players <- rbind(person_group_1, subset(players,players[,"Type"]!=11) ) #Reconstruct the whole players matrix
+  
+  #Movimiento humanos tipo 1
+  person_group_1 <- subset(players,players[,"Type"]==11)
+  person_group_1 <- rbind(c(NA,NA,NA),person_group_1)
+  count_person_1 <- length(person_group_1[-1,1])
+  
+  NW <-     chance_NW_person_group_1
+  N  <-     NW+ chance_N_person_group_1
+  NE <-     N+  chance_NE_person_group_1
+  E  <-     NE+ chance_E_person_group_1
+  SE <-     E+  chance_SE_person_group_1
+  S  <-     SE+ chance_S_person_group_1
+  SW <-     S+  chance_SW_person_group_1
+  W  <-     SW+  chance_W_person_group_1
+  center <- W+ chance_center_person_group_1
+  
+  direction <- c(columns+1,columns,columns-1,-1,-columns-1,-columns,-columns+1,1,0)
+  move_person_1_seed <- runif(min=0,max=center,n=count_person_1)
+  move_person_1_seed[move_person_1_seed<=NW] <- 1
+  move_person_1_seed[NW<=move_person_1_seed&move_person_1_seed<=N] <- 2
+  move_person_1_seed[N<=move_person_1_seed&move_person_1_seed<=NE] <- 3
+  move_person_1_seed[NE<=move_person_1_seed&move_person_1_seed<=E] <- 4
+  move_person_1_seed[E<=move_person_1_seed&move_person_1_seed<=SE] <- 5
+  move_person_1_seed[SE<=move_person_1_seed&move_person_1_seed<=S] <- 6
+  move_person_1_seed[S<=move_person_1_seed&move_person_1_seed<=SW] <- 7
+  move_person_1_seed[SW<=move_person_1_seed&move_person_1_seed<=W] <- 8
+  move_person_1_seed[W<=move_person_1_seed&move_person_1_seed<=center] <- 9
+  
+  person_1_coords <- cbind((person_group_1[-1,1] %% columns),(person_group_1[-1,1]%/% columns)+1)
+  person_1_coords <- cbind(person_1_coords,person_group_1[-1,3])
+  
+  x_temp <- NULL
+  y_temp <- NULL
+  pre_angle <- NULL
+  
+  for (i in 1:length(person_1_coords[,1])){
+    x_temp <- city_centers[person_1_coords[i,3],"x_cord"]-person_1_coords[i,1]
+    y_temp <- city_centers[person_1_coords[i,3],"y_cord"]-person_1_coords[i,2]
+    dist_temp <- sqrt( x_temp^2 + y_temp^2 )
+    distance_power <- dist_temp*city_power/dist_max_effect
+    if (runif(min=0,max=1,n=1)<=distance_power){
+      pre_angle <- atan2(y_temp,x_temp)
+      angle <- (pre_angle%%(2*pi))*180/pi
+      adj_angle <- angle-22.5+45
+      bias <- adj_angle%/%45
+      bias[bias==0] <- 8
+      move_person_1_seed[i]<-bias
+    }
+  }
+  
+  new_place <- person_group_1[-1,1]+direction[move_person_1_seed]
+  moves_invalid_wit <- duplicated(new_place)
+  while (any(moves_invalid_wit)){
+    move_person_1_seed[moves_invalid_wit] <- 9                 #Prevents migration to a within group occupied cell
+    new_place <- person_group_1[-1,1]+direction[move_person_1_seed]
+    moves_invalid_wit <- duplicated(new_place)|duplicated(new_place, fromLast=T)
+  }
+  new_place <- person_group_1[-1,1]+direction[move_person_1_seed]
+  other_players <- subset(players,players[,"Type"]!=11)[,1]
+  moves_invalid_bet <- duplicated(c(new_place,other_players))[1:count_person_1]|duplicated(c(new_place,other_players),fromLast=T)[1:count_person_1]
+  while (any(moves_invalid_bet)){
+    move_person_1_seed[moves_invalid_bet] <- 9                 #Prevents migration to a between group occupied cell
+    new_place <- person_group_1[-1,1]+direction[move_person_1_seed]
+    other_players <- subset(players,players[,"Type"]!=11)[,1]
+    all_players <- c(new_place,other_players)
+    moves_invalid_bet <- duplicated(all_players)|duplicated(all_players,fromLast=T)
+    moves_invalid_bet <-  moves_invalid_bet[1:count_person_1]
+  }
+  person_group_1[-1,1] <- person_group_1[-1,1]+  direction[move_person_1_seed]
+  person_group_1[-1,1] <- person_group_1[-1,1]+  as.numeric(person_group_1[-1,1]<0)*(columns*(rows-1)) #Prevent going down index
+  person_group_1[-1,1] <- person_group_1[-1,1]+  as.numeric(person_group_1[-1,1]>columns*rows)*(columns*rows*-1) #Prevent going up index
+
+  players <- rbind(person_group_1, subset(players,players[,"Type"]!=11) )
+
+  ##Revisa casillas libres
+  free_tiles <- rep(1,columns*rows)
+  occupied_tiles <- players[-1,1]
+  free_tiles[occupied_tiles] <- 0
+  
+  #Revisa ciudades libres
+  occupied_tiles <- players[-1,1]
+  free_tiles[occupied_tiles] <- 0
+  free_cities <- (board>0&board<=10)*(free_tiles==1)
+  free_cities <- which(free_cities==1)
+  
+  #Spawnea humanos tipo 1
+  spawn_seed <- runif(min=0,max=1,n=length(free_cities))
+  does_spawn <- spawn_seed<=spawn_rate_person_1
+  spawned_players <- free_cities[does_spawn]
+  spawned_humans_1_in_city_1 <- cbind(intersect(spawned_players,which(board==1)),11,2)
+  spawned_humans_1_in_city_2 <- cbind(intersect(spawned_players,which(board==2)),11,1)
+  if (length(spawned_humans_1_in_city_1[1,])==3){players <- rbind(players,spawned_humans_1_in_city_1)}
+  if (length(spawned_humans_1_in_city_2[1,])==3){players <- rbind(players,spawned_humans_1_in_city_2)}
+}
+
+```
+```{r, animation.hook="gifski",fig.dim = c(10, 10), interval=0.1}
+for (frame_index in 1:steps) {
+  gfx_sim <- matrix(store_frames[frame_index,],ncol=columns,nrow=rows,byrow=T)
+  plot(gfx_sim ,col=c("lightgreen","blue","blue","black","black","black","black","black","black","black","black","lightyellow"))
+}
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+
+
+## Including Plots
+
+You can also embed plots, for example:
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

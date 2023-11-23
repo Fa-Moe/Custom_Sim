@@ -1,0 +1,754 @@
+---
+title: "Custom simulator2"
+author: "Farell"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r,cache=T,cache.lazy = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(gifski)
+steps <- 100
+columns <- 1000
+rows    <- 800
+occupied_tiles <- NULL
+spawn_rate_person_1<-1/200
+death_rate_person_1<-1/200
+death_rate_person_2<-0/200
+city_power <- 30
+migration_chance <- 1/400
+beta <- 1/10
+treatment_chance <- 1/300
+#Entre Berlin y bremen 356 pixeles, 36 movimientos, 72 horas de viaje. step=2 horas. 4824 steps para simular un año.
+
+
+#beta_vector <- C(rep(),rep()) 
+
+temp_cities <- seq(from=10,to=20,by=1)
+cities <- list(
+c(
+columns*641+648:655, 
+columns*641+662:666,
+columns*642+644:656, 
+columns*642+661:666,
+columns*643+644:657, 
+columns*643+661:666, 
+columns*643+668:671,
+columns*644+644:671,
+columns*645+648:671,
+columns*646+648:671,
+columns*647+648:670, 
+columns*647+673:674,
+columns*648+648:674,
+columns*649+648:675,
+columns*650+648:676,
+columns*651+648:678,
+columns*652+648:678,
+columns*653+648:678,
+columns*654+647:678,
+columns*655+647:677,
+columns*656+647:676,
+columns*657+647:675, 
+columns*658+657:675, 
+columns*659+646:676, 
+columns*660+646:676, 
+columns*661+654:676, 
+columns*662+645:676, 
+columns*663+645:676, 
+columns*664+645:675, 
+columns*665+645:680, 
+columns*666+649:681, 
+columns*667+649:681,
+columns*668+648:680, 
+columns*669+647:679, 
+columns*670+647:672, 
+columns*670+676:678, 
+columns*671+647:672,
+columns*672+646:672, 
+columns*673+646:672, 
+columns*674+646:671, 
+columns*675+646:670,
+columns*676+646:667, 
+columns*677+645:665, 
+columns*678+645:665,
+columns*679+645:665, 
+columns*680+641:657, 
+columns*680+659:665,
+columns*681+640:657, 
+columns*681+659:665,
+columns*682+640:657, 
+columns*682+663:665, 
+columns*683+641:656, 
+columns*684+643:656, 
+columns*685+644:656, 
+columns*686+645:656, 
+columns*687+646:656, 
+columns*688+652:656, 
+columns*689+652:655, 
+columns*690+653:654
+  ),
+c(
+columns*388+786:790, 
+columns*389+786:792, 
+columns*390+783:793, 
+columns*391+781:793, 
+columns*392+779:793, 
+columns*393+776:792, 
+columns*394+774:790, 
+columns*395+773:790, 
+columns*396+771:790, 
+columns*397+771:791, 
+columns*398+771:792, 
+columns*399+771:794, 
+columns*400+771:796, 
+columns*401+768:798, 
+columns*402+768:798, 
+columns*403+768:798, 
+columns*404+769:798, 
+columns*405+769:798, 
+columns*406+769:798, 
+columns*407+769:798, 
+columns*408+769:801, 
+columns*409+769:801, 
+columns*410+769:801, 
+columns*411+772:801, 
+columns*412+772:801, 
+columns*413+774:805, 
+columns*414+773:805, 
+columns*415+772:805, 
+columns*416+771:805, 
+columns*417+770:805, 
+columns*418+768:806, 
+columns*419+767:807, 
+columns*420+766:807, 
+columns*421+766:799, 
+columns*421+805:808, 
+columns*422+766:798, 
+columns*422+805:808, 
+columns*423+766:780, 
+columns*423+789:798, 
+columns*423+806:808, 
+columns*424+766:780, 
+columns*424+789:791, 
+columns*425+766:780, 
+columns*426+766:779, 
+columns*427+767:775, 
+columns*428+768:775, 
+columns*429+769:774, 
+columns*430+769:773, 
+columns*431+770:773, 
+columns*432+770:773
+  ),
+c(
+columns*295+747:748, 
+columns*296+745:748, 
+columns*297+743:748, 
+columns*298+743:748, 
+columns*299+743:748, 
+columns*300+742:747, 
+columns*301+742:746, 
+columns*302+742:746, 
+columns*303+741:747, 
+columns*304+741:747, 
+columns*305+737:747, 
+columns*306+737:743, 
+columns*307+735:743, 
+columns*308+730:743, 
+columns*309+730:743, 
+columns*310+730:743, 
+columns*311+725:743, 
+columns*312+725:743, 
+columns*313+725:743, 
+columns*314+725:743, 
+columns*315+725:742, 
+columns*316+724:741, 
+columns*317+724:739, 
+columns*318+723:739, 
+columns*319+723:739, 
+columns*320+722:739, 
+columns*321+722:739, 
+columns*322+722:739, 
+columns*323+721:738, 
+columns*324+720:736, 
+columns*325+720:736, 
+columns*326+720:737, 
+columns*327+720:737, 
+columns*328+720:738, 
+columns*329+722:738, 
+columns*330+722:738, 
+columns*331+723:738, 
+columns*332+723:732, 
+columns*333+723:730
+  ),
+c(
+columns*203+540:543, 
+columns*204+539:544, 
+columns*205+535:544, 
+columns*206+532:544, 
+columns*207+531:548, 
+columns*208+531:549, 
+columns*209+530:549, 
+columns*210+530:549, 
+columns*211+530:549, 
+columns*212+530:549, 
+columns*213+530:549, 
+columns*214+530:549, 
+columns*215+530:546, 
+columns*216+530:546, 
+columns*217+530:546, 
+columns*218+531:546, 
+columns*219+534:544, 
+columns*220+534:543, 
+columns*221+534:543,
+columns*222+534:543
+  ),
+c(
+columns*168+538:539, 
+columns*169+533:539, 
+columns*170+533:539, 
+columns*171+526:527, 
+columns*171+533:539, 
+columns*172+525:528, 
+columns*172+532:540, 
+columns*173+524:540, 
+columns*174+524:542, 
+columns*175+524:543, 
+columns*176+523:543, 
+columns*177+523:543, 
+columns*178+523:543, 
+columns*179+523:543, 
+columns*180+523:540, 
+columns*181+524:539, 
+columns*182+524:528, 
+columns*182+532:537, 
+columns*183+524:528, 
+columns*184+524:527 
+  ),
+c(
+columns*149+507:509, 
+columns*150+507:509, 
+columns*151+506:515, 
+columns*152+502:515,
+columns*153+501:515, 
+columns*154+501:521, 
+columns*155+501:521, 
+columns*156+501:521, 
+columns*157+501:521, 
+columns*158+499:521, 
+columns*159+498:521, 
+columns*160+498:520, 
+columns*161+498:514, 
+columns*162+497:514, 
+columns*163+499:514, 
+columns*164+499:514, 
+columns*165+501:505, 
+columns*165+509:514, 
+columns*166+501:504, 
+columns*166+509:513
+  ),
+c(
+columns*159+473:478, 
+columns*160+473:480, 
+columns*161+467:482, 
+columns*162+467:482, 
+columns*163+466:481, 
+columns*164+466:480,
+columns*165+466:479, 
+columns*166+466:479, 
+columns*167+466:479, 
+columns*168+464:479, 
+columns*169+463:479, 
+columns*170+463:477, 
+columns*171+463:466, 
+columns*171+468:476, 
+columns*172+463:465, 
+columns*172+469:472
+  ),
+c(
+columns*291+360:363, 
+columns*291+368:377, 
+columns*292+360:363, 
+columns*292+368:377, 
+columns*293+360:363, 
+columns*293+369:377, 
+columns*294+360:363, 
+columns*294+371:375, 
+columns*295+360:363, 
+columns*295+371:375, 
+columns*296+360:375, 
+columns*297+360:375, 
+columns*298+360:375, 
+columns*299+361:375, 
+columns*300+361:375, 
+columns*301+361:376, 
+columns*302+361:380, 
+columns*303+361:380, 
+columns*304+362:380, 
+columns*305+364:380, 
+columns*306+364:377, 
+columns*307+364:377, 
+columns*308+364:372, 
+columns*309+364:372, 
+columns*310+364:374,
+columns*311+364:375, 
+columns*312+365:375, 
+columns*313+366:373, 
+columns*314+367:372
+  ),
+c(
+columns*326+191:193, 
+columns*327+191:193, 
+columns*328+191:202, 
+columns*329+189:203, 
+columns*330+189:205, 
+columns*331+188:205, 
+columns*332+188:205, 
+columns*333+188:207, 
+columns*334+188:207, 
+columns*335+185:207, 
+columns*336+185:203, 
+columns*337+185:203, 
+columns*338+185:203, 
+columns*339+187:208,
+columns*340+187:191, 
+columns*340+196:208, 
+columns*341+197:191, 
+columns*341+196:208, 
+columns*342+187:189, 
+columns*342+196:204, 
+columns*343+196:201, 
+columns*344+196:199, 
+columns*345+196:199, 
+columns*346+196:199, 
+columns*347+196:198
+  ),
+c(
+columns*516+117:120, 
+columns*517+116:124, 
+columns*518+116:126, 
+columns*519+116:126, 
+columns*520+116:126, 
+columns*521+112:126, 
+columns*522+112:126, 
+columns*523+112:126, 
+columns*524+112:128, 
+columns*525+110:128, 
+columns*526+109:128, 
+columns*527+109:128, 
+columns*528+109:128, 
+columns*529+110:128, 
+columns*530+110:128, 
+columns*531+110:128, 
+columns*532+110:130, 
+columns*533+113:130, 
+columns*534+113:130, 
+columns*535+113:130, 
+columns*536+113:130, 
+columns*537+115:130, 
+columns*538+115:123, 
+columns*538+127:129, 
+columns*539+115:123, 
+columns*540+115:123, 
+columns*541+116:123, 
+columns*542+116:123, 
+columns*543+116:118, 
+columns*544+116:119
+  )
+)
+
+
+initial_players <-matrix(c(columns*654+647,12,1,
+                           columns*654+648,11,1),ncol=3,byrow=T)
+
+chance_NW_person_group_1 <- chance_NE_person_group_1 <- chance_SE_person_group_1 <- chance_SW_person_group_1 <- 3
+chance_N_person_group_1 <- chance_E_person_group_1 <- chance_S_person_group_1 <- chance_W_person_group_1 <- 2
+chance_center_person_group_1 <- 1
+chance_NW_person_group_2 <- chance_NE_person_group_2 <- chance_SE_person_group_2 <- chance_SW_person_group_2 <- 3
+chance_N_person_group_2 <- chance_E_person_group_2 <- chance_S_person_group_2 <- chance_W_person_group_2 <- 2
+chance_center_person_group_2<- 1
+
+#######Setup
+
+###Crea la matriz de jugadores
+players <- matrix(ncol=3)
+colnames(players) <- c("Location","Type","Mem_belonging")
+###Añade los jugadores iniciales
+players <- rbind(players,initial_players)
+
+
+###Crea tablero con n (limite de 10?) ciudades
+board <- rep(0,columns*rows)
+board[cities[[1]]] <- 1
+board[cities[[2]]] <- 2
+board[cities[[3]]] <- 3
+board[cities[[4]]] <- 4
+board[cities[[5]]] <- 5
+board[cities[[6]]] <- 6
+board[cities[[7]]] <- 7
+board[cities[[8]]] <- 8
+board[cities[[9]]] <- 9
+board[cities[[10]]] <- 10
+occupied_tiles <- NULL
+
+###Calculos de distancias
+dist_max_effect <- sqrt( columns^2 + rows^2 )
+example_powers <- (1:dist_max_effect)*city_power/dist_max_effect
+print(example_powers)
+
+
+center_city_1 <- c(mean(cities[[1]] %% columns),mean((cities[[1]] %/% columns)+1))
+center_city_2 <- c(mean(cities[[2]] %% columns),mean((cities[[2]] %/% columns)+1))
+center_city_3 <- c(mean(cities[[3]] %% columns),mean((cities[[3]] %/% columns)+1))
+center_city_4 <- c(mean(cities[[4]] %% columns),mean((cities[[4]] %/% columns)+1))
+center_city_5 <- c(mean(cities[[5]] %% columns),mean((cities[[5]] %/% columns)+1))
+center_city_6 <- c(mean(cities[[6]] %% columns),mean((cities[[6]] %/% columns)+1))
+center_city_7 <- c(mean(cities[[7]] %% columns),mean((cities[[7]] %/% columns)+1))
+center_city_8 <- c(mean(cities[[8]] %% columns),mean((cities[[8]] %/% columns)+1))
+center_city_9 <- c(mean(cities[[9]] %% columns),mean((cities[[9]] %/% columns)+1))
+center_city_10 <- c(mean(cities[[10]] %% columns),mean((cities[[10]] %/% columns)+1))
+city_centers <- rbind(center_city_1,center_city_2,center_city_3,center_city_4,center_city_5,center_city_6,center_city_7,center_city_8,center_city_9,center_city_10)
+colnames(city_centers) <- c("x_cord","y_cord")
+
+center_city_1 <- c(mean(cities[[1]] %% columns),mean((cities[[1]] %/% columns)+1))
+
+datos_grafica_raw <- matrix(0, nrow=steps,ncol=11)
+
+#######Dinamico
+store_frames <- matrix(nrow=steps,ncol=columns*rows)
+for (frame_index in 1:steps){
+  ###Veamos el tablero
+  vis_board <- board
+  vis_board[players[-1,1]] <- players[-1,2]
+  store_frames[frame_index,] <- vis_board
+  
+  
+  
+  ###Spawneos y despawneos
+  ###Humanos tipo 1
+  #Despawnea humanos tipo 1
+  person_group_1 <- subset(players,players[,"Type"]==11)
+  person_group_1 <- rbind(c(NA,NA,NA),person_group_1)
+  count_person_1 <- length(person_group_1[-1,1])
+  dies_person_1_seed <- runif(min=0,max=1,n=count_person_1)
+  does_die <- dies_person_1_seed<=death_rate_person_1
+  does_die <- c(FALSE,does_die) #Keeps the NA row always
+  person_group_1 <- person_group_1[!does_die,] #Keep the humans 1 that don't die
+  players <- rbind(person_group_1, subset(players,players[,"Type"]!=11) ) #Reconstruct the whole players matrix
+  
+  #Movimiento humanos tipo 1
+  person_group_1 <- subset(players,players[,"Type"]==11)
+  person_group_1 <- rbind(c(NA,NA,NA),person_group_1)
+  count_person_1 <- length(person_group_1[-1,1])
+  
+  NW <-     chance_NW_person_group_1
+  N  <-     NW+ chance_N_person_group_1
+  NE <-     N+  chance_NE_person_group_1
+  E  <-     NE+ chance_E_person_group_1
+  SE <-     E+  chance_SE_person_group_1
+  S  <-     SE+ chance_S_person_group_1
+  SW <-     S+  chance_SW_person_group_1
+  W  <-     SW+  chance_W_person_group_1
+  center <- W+ chance_center_person_group_1
+  
+  direction <- c(columns+1,columns,columns-1,-1,-columns-1,-columns,-columns+1,1,0)*10
+  move_person_1_seed <- runif(min=0,max=center,n=count_person_1)
+  move_person_1_seed[move_person_1_seed<=NW] <- 1
+  move_person_1_seed[NW<=move_person_1_seed&move_person_1_seed<=N] <- 2
+  move_person_1_seed[N<=move_person_1_seed&move_person_1_seed<=NE] <- 3
+  move_person_1_seed[NE<=move_person_1_seed&move_person_1_seed<=E] <- 4
+  move_person_1_seed[E<=move_person_1_seed&move_person_1_seed<=SE] <- 5
+  move_person_1_seed[SE<=move_person_1_seed&move_person_1_seed<=S] <- 6
+  move_person_1_seed[S<=move_person_1_seed&move_person_1_seed<=SW] <- 7
+  move_person_1_seed[SW<=move_person_1_seed&move_person_1_seed<=W] <- 8
+  move_person_1_seed[W<=move_person_1_seed&move_person_1_seed<=center] <- 9
+  
+  person_1_coords <- cbind((person_group_1[-1,1] %% columns),(person_group_1[-1,1]%/% columns)+1)
+  person_1_coords <- cbind(person_1_coords,person_group_1[-1,3])
+  
+  x_temp <- NULL
+  y_temp <- NULL
+  pre_angle <- NULL
+  
+  for (i in 1:length(person_1_coords[,1])){
+    x_temp <- city_centers[person_1_coords[i,3],"x_cord"]-person_1_coords[i,1]
+    y_temp <- city_centers[person_1_coords[i,3],"y_cord"]-person_1_coords[i,2]
+    dist_temp <- sqrt( x_temp^2 + y_temp^2 )
+    distance_power <- dist_temp*city_power/dist_max_effect
+    if (runif(min=0,max=1,n=1)<=distance_power){
+      pre_angle <- atan2(y_temp,x_temp)
+      angle <- (pre_angle%%(2*pi))*180/pi
+      adj_angle <- angle-22.5+45
+      bias <- adj_angle%/%45
+      bias[bias==0] <- 8
+      move_person_1_seed[i]<-bias
+    }
+  }
+  
+  new_place <- person_group_1[-1,1]+direction[move_person_1_seed]
+  moves_invalid_wit <- duplicated(new_place)
+  while (any(moves_invalid_wit)){
+    move_person_1_seed[moves_invalid_wit] <- 9                 #Prevents migration to a within group occupied cell
+    new_place <- person_group_1[-1,1]+direction[move_person_1_seed]
+    moves_invalid_wit <- duplicated(new_place)|duplicated(new_place, fromLast=T)
+  }
+  new_place <- person_group_1[-1,1]+direction[move_person_1_seed]
+  other_players <- subset(players,players[,"Type"]!=11)[,1]
+  moves_invalid_bet <- duplicated(c(new_place,other_players))[1:count_person_1]|duplicated(c(new_place,other_players),fromLast=T)[1:count_person_1]
+  while (any(moves_invalid_bet)){
+    move_person_1_seed[moves_invalid_bet] <- 9                 #Prevents migration to a between group occupied cell
+    new_place <- person_group_1[-1,1]+direction[move_person_1_seed]
+    other_players <- subset(players,players[,"Type"]!=11)[,1]
+    all_players <- c(new_place,other_players)
+    moves_invalid_bet <- duplicated(all_players)|duplicated(all_players,fromLast=T)
+    moves_invalid_bet <-  moves_invalid_bet[1:count_person_1]
+  }
+  person_group_1[-1,1] <- person_group_1[-1,1]+  direction[move_person_1_seed]
+  person_group_1[-1,1] <- person_group_1[-1,1]+  as.numeric(person_group_1[-1,1]<0)*(columns*(rows-1)) #Prevent going down index
+  person_group_1[-1,1] <- person_group_1[-1,1]+  as.numeric(person_group_1[-1,1]>columns*rows)*(columns*rows*-1) #Prevent going up index
+
+  players <- rbind(person_group_1, subset(players,players[,"Type"]!=11) )
+
+  ##Revisa casillas libres
+  free_tiles <- rep(1,columns*rows)
+  occupied_tiles <- players[-1,1]
+  free_tiles[occupied_tiles] <- 0
+  
+  #Revisa ciudades libres
+  occupied_tiles <- players[-1,1]
+  free_tiles[occupied_tiles] <- 0
+  free_cities <- (board>0&board<=10)&(free_tiles==1)
+  free_cities <- which(free_cities==1)
+  
+  #Spawnea humanos tipo 1
+  spawn_seed <- runif(min=0,max=1,n=length(free_cities))
+  does_spawn <- spawn_seed<=spawn_rate_person_1
+  spawned_players <- free_cities[does_spawn]
+  spawned_humans_1_in_city_1 <- cbind(intersect(spawned_players,which(board==1)),11,1)
+  spawned_humans_1_in_city_2 <- cbind(intersect(spawned_players,which(board==2)),11,2)
+  spawned_humans_1_in_city_3 <- cbind(intersect(spawned_players,which(board==3)),11,3)
+  spawned_humans_1_in_city_4 <- cbind(intersect(spawned_players,which(board==4)),11,4)
+  spawned_humans_1_in_city_5 <- cbind(intersect(spawned_players,which(board==5)),11,5)
+  spawned_humans_1_in_city_6 <- cbind(intersect(spawned_players,which(board==6)),11,6)
+  spawned_humans_1_in_city_7 <- cbind(intersect(spawned_players,which(board==7)),11,7)
+  spawned_humans_1_in_city_8 <- cbind(intersect(spawned_players,which(board==8)),11,8)
+  spawned_humans_1_in_city_9 <- cbind(intersect(spawned_players,which(board==9)),11,9)
+  spawned_humans_1_in_city_10 <- cbind(intersect(spawned_players,which(board==10)),11,10)
+  if (length(spawned_humans_1_in_city_1[1,])==3){players <- rbind(players,spawned_humans_1_in_city_1)}
+  if (length(spawned_humans_1_in_city_2[1,])==3){players <- rbind(players,spawned_humans_1_in_city_2)}
+  if (length(spawned_humans_1_in_city_3[1,])==3){players <- rbind(players,spawned_humans_1_in_city_3)}
+  if (length(spawned_humans_1_in_city_4[1,])==3){players <- rbind(players,spawned_humans_1_in_city_4)}
+  if (length(spawned_humans_1_in_city_5[1,])==3){players <- rbind(players,spawned_humans_1_in_city_5)}
+  if (length(spawned_humans_1_in_city_6[1,])==3){players <- rbind(players,spawned_humans_1_in_city_6)}
+  if (length(spawned_humans_1_in_city_7[1,])==3){players <- rbind(players,spawned_humans_1_in_city_7)}
+  if (length(spawned_humans_1_in_city_8[1,])==3){players <- rbind(players,spawned_humans_1_in_city_8)}
+  if (length(spawned_humans_1_in_city_9[1,])==3){players <- rbind(players,spawned_humans_1_in_city_9)}
+  if (length(spawned_humans_1_in_city_10[1,])==3){players <- rbind(players,spawned_humans_1_in_city_10)}
+  
+  #Migracion
+  person_group_1 <- subset(players,players[,"Type"]==11)
+  
+  count_person_1 <- length(person_group_1[,3])
+  moves_person_1_seed <- runif(min=0,max=1,n=count_person_1)
+  moves_person_1_seed <- moves_person_1_seed<=migration_chance
+  person_group_1[moves_person_1_seed,3]<-ceiling(runif(min=0,max=10,n=count_person_1)+0.0000001)[moves_person_1_seed]
+  person_group_1 <- rbind(c(NA,NA,NA),person_group_1)
+  players <- rbind(person_group_1, subset(players,players[,"Type"]!=11) )
+  
+  #Safety lock al menos un infectado
+  person_group_2 <- subset(players,players[,"Type"]==12)
+  if (dim(person_group_2)[1]==0){person_group_2 <- rbind(person_group_2, c(rows*columns,12,1))}
+  
+  
+  #Infección SI
+  person_group_1 <- subset(players,players[,"Type"]==11)
+  person_group_2 <- subset(players,players[,"Type"]==12)
+  count_person_2 <- length(person_group_2[,1])
+  infected_pos <- person_group_2[,1]
+  infected_adjacent <- NULL
+  for (z in infected_pos){
+    t_adjacents <- c(c(columns+1,columns,columns-1,-1,-columns-1,-columns,-columns+1,1,0),c(columns+1,columns,columns-1,-1,-columns-1,-columns,-columns+1,1,0)*2,c(columns+1,columns,columns-1,-1,-columns-1,-columns,-columns+1,1,0)*3,c(columns+1,columns,columns-1,-1,-columns-1,-columns,-columns+1,1,0)*4,c(columns+1,columns,columns-1,-1,-columns-1,-columns,-columns+1,1,0)*5)+z
+    infected_adjacent <- c(infected_adjacent,t_adjacents)
+  }
+  infected_adjacent <- infected_adjacent+  as.numeric(infected_adjacent<0)*(columns*(rows-1)) #Prevent going down index
+  infected_adjacent <- infected_adjacent+  as.numeric(infected_adjacent>columns*rows)*(columns*rows*-1) #Prevent going up index
+  
+  who_rolls_infection <- NULL
+  for (z in infected_adjacent){
+    t_who <- which(person_group_1[,1]==z)
+    who_rolls_infection <- c(who_rolls_infection,t_who)
+  }
+  
+  infection_seed  <- runif(min=0,max=1,n=length(who_rolls_infection))
+  beta_adj <- beta
+  infection_check <- infection_seed<=beta_adj
+  gets_infection <- who_rolls_infection[infection_check]
+  person_group_1[gets_infection,2] <- 12
+  players <- rbind(c(NA,NA,NA),person_group_1,person_group_2,subset(players,(players[,"Type"]!=11)&(players[,"Type"]!=12)))
+  
+  ###Spawneos y despawneos
+  ###Humanos tipo 2
+  #Despawnea humanos tipo 2
+  person_group_2 <- subset(players,players[,"Type"]==12)
+  person_group_2 <- rbind(c(NA,NA,NA),person_group_2)
+  count_person_2 <- length(person_group_2[-1,1])
+  dies_person_2_seed <- runif(min=0,max=1,n=count_person_2)
+  does_die <- dies_person_2_seed<=death_rate_person_2
+  does_die <- c(FALSE,does_die) #Keeps the NA row always
+  person_group_2 <- person_group_2[!does_die,] #Keep the humans 1 that don't die
+  players <- rbind(person_group_2, subset(players,players[,"Type"]!=12) ) #Reconstruct the whole players matrix
+  
+  #Safety lock al menos un infectado
+  person_group_2 <- subset(players,players[,"Type"]==12)
+  if (dim(person_group_2)[1]==0){person_group_2 <- rbind(person_group_2, c(rows*columns,12,1))}
+  
+  #Movimiento humanos tipo 2
+  person_group_2 <- subset(players,players[,"Type"]==12)
+  person_group_2 <- rbind(c(NA,NA,NA),person_group_2)
+  count_person_2 <- length(person_group_2[-1,1])
+  
+  NW <-     chance_NW_person_group_2
+  N  <-     NW+ chance_N_person_group_2
+  NE <-     N+  chance_NE_person_group_2
+  E  <-     NE+ chance_E_person_group_2
+  SE <-     E+  chance_SE_person_group_2
+  S  <-     SE+ chance_S_person_group_2
+  SW <-     S+  chance_SW_person_group_2
+  W  <-     SW+  chance_W_person_group_2
+  center <- W+ chance_center_person_group_2
+  
+  direction <- c(columns+1,columns,columns-1,-1,-columns-1,-columns,-columns+1,1,0)*10
+  move_person_2_seed <- runif(min=0,max=center,n=count_person_2)
+  move_person_2_seed[move_person_2_seed<=NW] <- 1
+  move_person_2_seed[NW<=move_person_2_seed&move_person_2_seed<=N] <- 2
+  move_person_2_seed[N<=move_person_2_seed&move_person_2_seed<=NE] <- 3
+  move_person_2_seed[NE<=move_person_2_seed&move_person_2_seed<=E] <- 4
+  move_person_2_seed[E<=move_person_2_seed&move_person_2_seed<=SE] <- 5
+  move_person_2_seed[SE<=move_person_2_seed&move_person_2_seed<=S] <- 6
+  move_person_2_seed[S<=move_person_2_seed&move_person_2_seed<=SW] <- 7
+  move_person_2_seed[SW<=move_person_2_seed&move_person_2_seed<=W] <- 8
+  move_person_2_seed[W<=move_person_2_seed&move_person_2_seed<=center] <- 9
+  
+  person_2_coords <- cbind((person_group_2[-1,1] %% columns),(person_group_2[-1,1]%/% columns)+1)
+  person_2_coords <- cbind(person_2_coords,person_group_2[-1,3])
+  if(dim(person_2_coords)[2]!=3){person_2_coords <- cbind(person_2_coords,1)}
+  
+  x_temp <- NULL
+  y_temp <- NULL
+  pre_angle <- NULL
+  
+  for (i in 1:length(person_2_coords[,1])){
+    x_temp <- city_centers[person_2_coords[i,3],"x_cord"]-person_2_coords[i,1]
+    y_temp <- city_centers[person_2_coords[i,3],"y_cord"]-person_2_coords[i,2]
+    dist_temp <- sqrt( x_temp^2 + y_temp^2 )
+    distance_power <- dist_temp*city_power/dist_max_effect
+    if (runif(min=0,max=1,n=1)<=distance_power){
+      pre_angle <- atan2(y_temp,x_temp)
+      angle <- (pre_angle%%(2*pi))*180/pi
+      adj_angle <- angle-22.5+45
+      bias <- adj_angle%/%45
+      bias[bias==0] <- 8
+      move_person_2_seed[i]<-bias
+    }
+  }
+  
+  new_place <- person_group_2[-1,1]+direction[move_person_2_seed]
+  moves_invalid_wit <- duplicated(new_place)
+  while (any(moves_invalid_wit)){
+    move_person_2_seed[moves_invalid_wit] <- 9                 #Prevents migration to a within group occupied cell
+    new_place <- person_group_2[-1,1]+direction[move_person_2_seed]
+    moves_invalid_wit <- duplicated(new_place)|duplicated(new_place, fromLast=T)
+  }
+  new_place <- person_group_2[-1,1]+direction[move_person_2_seed]
+  other_players <- subset(players,players[,"Type"]!=12)[,1]
+  all_players <- c(new_place,other_players)
+  moves_invalid_bet <- duplicated(all_players)|duplicated(all_players,fromLast=T)
+  moves_invalid_bet <-  moves_invalid_bet[1:count_person_2]
+  while (any(moves_invalid_bet)){
+    move_person_2_seed[moves_invalid_bet] <- 9                 #Prevents migration to a between group occupied cell
+    new_place <- person_group_2[-1,1]+direction[move_person_2_seed]
+    other_players <- subset(players,players[,"Type"]!=12)[,1]
+    all_players <- c(new_place,other_players)
+    moves_invalid_bet <- duplicated(all_players)|duplicated(all_players,fromLast=T)
+    moves_invalid_bet <-  moves_invalid_bet[1:count_person_2]
+  }
+  person_group_2[-1,1] <- person_group_2[-1,1]+  direction[move_person_2_seed]
+  person_group_2[-1,1] <- person_group_2[-1,1]+  as.numeric(person_group_2[-1,1]<0)*(columns*(rows-1)) #Prevent going down index
+  person_group_2[-1,1] <- person_group_2[-1,1]+  as.numeric(person_group_2[-1,1]>columns*rows)*(columns*rows*-1) #Prevent going up index
+
+  players <- rbind(person_group_2, subset(players,players[,"Type"]!=12) )
+
+  #Migracion
+  person_group_2 <- subset(players,players[,"Type"]==12)
+  
+  count_person_2 <- length(person_group_2[,3])
+  moves_person_2_seed <- runif(min=0,max=1,n=count_person_2)
+  moves_person_2_seed <- moves_person_2_seed<=migration_chance
+  person_group_2[moves_person_2_seed,3]<-ceiling(runif(min=0,max=10,n=count_person_2)+0.0000001)[moves_person_2_seed]
+  person_group_2 <- rbind(c(NA,NA,NA),person_group_2)
+  players <- rbind(person_group_2, subset(players,players[,"Type"]!=12) )
+  
+  #Tratamiento
+  person_group_2 <- subset(players,players[,"Type"]==12)
+  
+  count_person_2 <- length(person_group_2[,3])
+  moves_person_2_seed <- runif(min=0,max=1,n=count_person_2)
+  moves_person_2_seed <- moves_person_2_seed<=treatment_chance
+  person_group_2[moves_person_2_seed,2]<-11
+  person_group_2 <- rbind(c(NA,NA,NA),person_group_2)
+  players <- rbind(person_group_2, subset(players,players[,"Type"]!=12) )
+  
+  #Datos graficas
+  for (i in 1:10){
+  datos_grafica_raw[frame_index,i] <- length( intersect( cities[[i]] , subset(players,players[,"Type"]==12)[,1] )) / length( intersect( cities[[i]] , players[,1] ))
+  }
+  
+  datos_grafica_raw[frame_index,11] <- length(subset(players,players[,"Type"]==12)[,1])/length( players[,1] )
+}
+
+
+plot(datos_grafica_raw[,1]*100~c(1:steps),type="l",main="% de infectados en Berlin")
+plot(datos_grafica_raw[,2]*100~c(1:steps),type="l",main="% de infectados en Hamburgo")
+plot(datos_grafica_raw[,3]*100~c(1:steps),type="l",main="% de infectados en Múnich")
+plot(datos_grafica_raw[,4]*100~c(1:steps),type="l",main="% de infectados en Colonia")
+plot(datos_grafica_raw[,5]*100~c(1:steps),type="l",main="% de infectados en Fráncfort")
+plot(datos_grafica_raw[,6]*100~c(1:steps),type="l",main="% de infectados en Stuttgart")
+plot(datos_grafica_raw[,7]*100~c(1:steps),type="l",main="% de infectados en Düsseldorf")
+plot(datos_grafica_raw[,8]*100~c(1:steps),type="l",main="% de infectados en Dortmund")
+plot(datos_grafica_raw[,9]*100~c(1:steps),type="l",main="% de infectados en Essen")
+plot(datos_grafica_raw[,10]*100~c(1:steps),type="l",main="% de infectados en Bremen")
+plot(datos_grafica_raw[,11]*100~c(1:steps),type="l",main="% de infectados en Alemania")
+```
+
+```{r, animation.hook="gifski", interval=0.3,cache=T,cache.lazy = FALSE,fig.dim=c(13,10)}
+library(ggplot2)
+library(gganimate)
+require(scattermore)
+
+
+system.time(all_coords <- cbind(rep(c(1:rows),each=columns),rep(c(1:columns),times=rows),0))
+for (frame_index in 99:100) {
+  all_coords[,3] <- store_frames[frame_index,]
+  colnames(all_coords) <- c("X_component","Y_component","Color_component")
+  print(system.time(
+  gfx_obj <- ggplot(data=as.data.frame(all_coords),aes(x=X_component,y=Y_component,col=as.factor(Color_component)))+
+             scale_color_manual(values = c("white","lightblue","lightblue","lightblue","lightblue","lightblue","lightblue","lightblue","lightblue","lightblue","lightblue","green","red"))+
+             geom_scattermore()))
+  print(system.time(print(gfx_obj)))
+}
+
+#b1
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+
+
+## Including Plots
+
+You can also embed plots, for example:
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
